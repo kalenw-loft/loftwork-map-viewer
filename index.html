@@ -19,7 +19,16 @@
   .panel { position: fixed; background: var(--panel); border: 1px solid var(--line);
     border-radius: 12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 
-  #side { top: 16px; left: 16px; width: 252px; max-height: calc(100% - 32px); overflow-y: auto; padding: 14px 14px 12px; }
+  /* One floating bar: menu button, search, mic. Everything else lives in the drawer it opens. */
+  #bar { top: 16px; left: 16px; width: 300px; padding: 6px; border-radius: 14px; z-index: 3; }
+  #bar .line { display: flex; align-items: center; gap: 6px; }
+  .icon { width: 44px; height: 44px; flex: none; border-radius: 10px; display: grid; place-items: center; text-align: center; }
+  .icon:hover { background: rgba(255, 255, 255, .1); }
+  .icon svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  #menuBtn[aria-expanded="true"] { background: rgba(255, 255, 255, .14); }
+  #mic:disabled { opacity: .35; cursor: default; background: none; }
+  #side { top: 84px; left: 16px; width: 300px; max-height: calc(100% - 100px); overflow-y: auto; padding: 14px 14px 12px; display: none; z-index: 2; }
+  body.side-open #side { display: block; }
   h1 { margin: 0; font-size: 17px; letter-spacing: .02em; }
   #sub { color: var(--muted); font-size: 11.5px; margin: 2px 0 10px; }
   h2 { margin: 12px 0 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
@@ -39,16 +48,29 @@
   #cities button span { opacity: .6; margin-left: 4px; }
   label.type { display: flex; align-items: center; gap: 8px; padding: 2.5px 0; cursor: pointer; }
   label.type input { accent-color: #cfd3dd; margin: 0; }
-  #search { width: 100%; margin-top: 10px; padding: 7px 9px; border-radius: 7px;
-    border: 1px solid var(--line); background: rgba(0, 0, 0, .35); color: var(--text); font: inherit; }
-  #found { color: var(--muted); font-size: 11.5px; min-height: 16px; margin-top: 4px; }
-  #sideToggle { display: none; }
+  #search { flex: 1; min-width: 0; height: 40px; padding: 7px 10px; border-radius: 9px;
+    border: 1px solid var(--line); background: rgba(0, 0, 0, .35); color: var(--text); font: inherit; font-size: 16px; }
+  #found { color: var(--muted); font-size: 11.5px; padding: 4px 8px 2px; }
+  #found:empty { display: none; }
+  #found { display: flex; align-items: center; gap: 8px; }
+  #found .walkBtn { margin-left: auto; padding: 3px 12px; border-radius: 99px; border: 1px solid rgba(255, 255, 255, .3); color: var(--text); font-size: 12px; }
+  #found .walkBtn[aria-pressed="true"] { background: #fff; color: #111; }
 
-  #views { top: 16px; right: 16px; display: flex; gap: 2px; padding: 4px; border-radius: 99px; }
-  #views button { padding: 6px 12px; border-radius: 99px; font-size: 12.5px; }
-  #views button:hover { background: rgba(255, 255, 255, .1); }
-  #views button[aria-pressed="true"] { background: #fff; color: #111; }
-  #views .sep { width: 1px; background: var(--line); margin: 4px 4px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 4px; }
+  .pills button { padding: 6px 12px; border-radius: 99px; font-size: 12.5px; border: 1px solid rgba(255, 255, 255, .18); }
+  .pills button:hover { background: rgba(255, 255, 255, .1); }
+  .pills button[aria-pressed="true"] { background: #fff; color: #111; }
+  #presentBtn { margin-top: 10px; width: 100%; text-align: center; padding: 9px 12px; border-radius: 99px; font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, .35); }
+  #presentBtn:hover { background: rgba(255, 255, 255, .1); }
+
+  /* Presentation mode: only the bar, the tab switch and the card stay. */
+  #tabs { top: 16px; right: 16px; padding: 4px; border-radius: 99px; display: none; gap: 2px; }
+  #tabs button { min-height: 44px; padding: 0 18px; border-radius: 99px; font-size: 14px; font-weight: 600; }
+  #tabs button[aria-pressed="true"] { background: #fff; color: #111; }
+  body.present #tabs { display: flex; }
+  body.present #time { display: none; }
+  @media (min-width: 761px) { body.present #card { top: 84px; } }
 
   #time { left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px;
     padding: 8px 16px 8px 10px; border-radius: 99px; width: min(560px, calc(100% - 32px)); }
@@ -90,23 +112,53 @@
   #tip span { color: var(--muted); font-size: 11.5px; }
   #err { top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 18px 22px; display: none; max-width: 420px; }
 
+  .panel { touch-action: manipulation; }   /* panels scroll and zoom as usual, without the double-tap delay */
+
+  /* Touch: every button and row is at least 44 px tall. */
+  @media (pointer: coarse), (max-width: 760px) {
+    .row, label.type, #fab .row { min-height: 44px; }
+    #cities, #bases { gap: 6px; }
+    #cities button, #bases button, #card .base button, .pills button, #found .walkBtn { min-height: 44px; padding: 0 13px; }
+    #card .links button { min-height: 44px; align-items: center; }
+    #card a.open { min-height: 44px; display: inline-flex; align-items: center; padding: 0 18px; }
+    #close { width: 44px; height: 44px; font-size: 16px; }
+    #play { width: 44px; height: 44px; }
+    #year { height: 44px; }
+    #how summary { min-height: 44px; display: flex; align-items: center; }
+  }
+
   @media (max-width: 760px) {
-    #side { width: 220px; padding: 10px 12px; }
-    #side.closed > :not(h1):not(#sideToggle) { display: none; }
-    #side.closed { width: auto; }
-    #sideToggle { display: block; position: absolute; top: 9px; right: 10px; color: var(--muted); font-size: 12px; }
-    #side h1 { padding-right: 52px; }
-    #views { top: auto; bottom: 74px; right: 50%; transform: translateX(50%); white-space: nowrap; }
-    #card { top: auto; bottom: 126px; right: 16px; left: 16px; width: auto; max-height: 46%; }
+    #bar { width: auto; right: 16px; }
+    #side { width: auto; right: 16px; max-height: calc(100% - 84px - 84px); padding: 12px; }
+    #tabs { top: auto; bottom: 16px; right: 50%; transform: translateX(50%); }
+    #card { top: auto; bottom: 88px; right: 16px; left: 16px; width: auto; max-height: 46%; }
+    body.side-open #card { display: none !important; }
     #card img { aspect-ratio: 21 / 9; }
   }
 </style>
 </head>
 <body>
-<div id="side" class="panel">
+<div id="bar" class="panel">
+  <div class="line">
+    <button id="menuBtn" class="icon" aria-label="Menu" aria-expanded="false" aria-controls="side" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <input id="search" type="search" placeholder="Search title, client or tag" autocomplete="off" aria-label="Search the map">
+    <button id="mic" class="icon" disabled aria-label="Voice search (coming soon)" title="Voice search (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+  </div>
+  <div id="found" aria-live="polite"></div>
+</div>
+
+<div id="side" class="panel" aria-label="Menu">
   <h1>Loftwork Map</h1>
-  <button id="sideToggle" aria-expanded="true">Hide</button>
   <div id="sub">loading…</div>
+  <h2>View</h2>
+  <div id="views" class="pills" role="toolbar" aria-label="Views">
+    <button data-view="all" aria-pressed="true">Everything</button>
+    <button data-view="loftwork" aria-pressed="false">Loftwork</button>
+    <button data-view="fabcafe" aria-pressed="false">FabCafe</button>
+    <button id="langView" aria-pressed="false" title="Colour each dot by which languages it exists in">Languages</button>
+    <button class="walkBtn" aria-pressed="false" title="Walk from piece to piece: through the current search, base or domain, or else through the pictures">Walk ▸</button>
+  </div>
+  <button id="presentBtn" aria-pressed="false" title="Hide everything except search and the Loftwork / FabCafe switch">Presentation mode</button>
   <h2 title="Programmes and places Loftwork started that later work keeps building on">Bases</h2>
   <div id="bases"></div>
   <h2>Society domains</h2>
@@ -120,29 +172,22 @@
   <label class="type" title="Trial: bigger and brighter = cited by more pages, grew sub-pages, more people credited, longer; translation adds a little"><input id="weighted" type="checkbox" checked><span>Size by weight <small style="color:var(--muted)">(trial)</small></span></label>
   <label class="type" title="Hide the pieces that only exist in English or Traditional Chinese"><input id="jpOnly" type="checkbox" checked><span>Japanese content only</span><span class="n" id="jpOnlyN"></span></label>
   <div id="langs" hidden><h2>Language</h2></div>
-  <input id="search" type="search" placeholder="Search title, client or tag" autocomplete="off" aria-label="Search the map">
-  <div id="found"></div>
   <details id="how">
     <summary>How to read and move</summary>
     <p><b>Where a dot sits.</b> Each column is a society domain. It branches by Loftwork's own theme tags, and height is the year.</p>
     <p><b>How big it is.</b> Its weight: how often other pages link to it, whether it grew sub-pages, how many people are credited, and how long it is. Being translated adds a little, but a well-cited Japanese-only piece still outweighs a translated one.</p>
     <p><b>Bases.</b> Programmes and places Loftwork started that later work builds on (100BANCH, AWRD, YouFab, MTRL…). Each is labelled where it started; pick one to see only its pieces, with lines from the start to everything that grew from it.</p>
-    <p><b>Languages.</b> The map shows Japanese content. "Languages" (top right) colours each dot by which versions exist: Japanese only, also in English, also in Traditional Chinese only.</p>
+    <p><b>Languages.</b> The map shows Japanese content. "Languages" (under View in the menu) colours each dot by which versions exist: Japanese only, also in English, also in Traditional Chinese only.</p>
     <p><b>Lines.</b> Faint lines are page links. Strands between columns show how much work the two domains share. Click a dot to see what it links to, work for the same client, and work by the same people.</p>
     <p><b>Trackpad.</b> Two fingers sideways to orbit, up and down to move through the years, pinch to zoom. Click and drag also orbits; Shift + two fingers pans.</p>
+    <p><b>Touch.</b> One finger looks around, two fingers walk (swipe up to go forward, sideways to step aside), pinch to zoom. Tap a dot or picture to open it.</p>
     <p><b>Mouse.</b> Scroll wheel zooms toward the cursor; drag to orbit. On a trackpad, hold ⌘ while scrolling to zoom the same way.</p>
   </details>
 </div>
 
-<div id="views" class="panel" role="toolbar" aria-label="Views">
-  <button data-view="all" aria-pressed="true">Everything</button>
+<div id="tabs" class="panel" role="toolbar" aria-label="Loftwork or FabCafe">
   <button data-view="loftwork" aria-pressed="false">Loftwork</button>
   <button data-view="fabcafe" aria-pressed="false">FabCafe</button>
-  <span class="sep"></span>
-  <button id="langView" aria-pressed="false" title="Colour each dot by which languages it exists in">Languages</button>
-  <span class="sep"></span>
-  <button id="surf" aria-pressed="false" title="Fly from one glowing node to the next">Surf ▸</button>
-  <button id="shuffle" title="Pick a new set of glowing nodes">Shuffle</button>
 </div>
 
 <div id="time" class="panel">
@@ -161,600 +206,6 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
 } }
 </script>
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
-const TYPE_LABEL = ['Projects', 'Findings', 'Events', 'News'];
-const TYPE_ONE = ['Project', 'Finding', 'Event', 'News'];
-const TYPE_SIZE = [2.3, 1.9, 1.15, 1.25];
-const Y0 = 2007, Y_STEP = 2.6;                 // height per year
-const GLOW_COUNT = 14, GLOW_FABCAFE = 5;       // how many nodes glow per visit, and FabCafe's share
-const FAB_WHITE = '#F6F3EE';
-const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const $ = (id) => document.getElementById(id);
-const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-const yOf = (t) => (t - Y0) * Y_STEP;
-
-// ---------- scene ----------
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.5, 1500);
-camera.position.set(12, 86, 172);
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
-document.body.prepend(renderer.domElement);
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; controls.dampingFactor = 0.14; controls.rotateSpeed = 0.9;
-controls.maxDistance = 420; controls.minDistance = 6;
-controls.enableZoom = false;   // the wheel is handled below, so trackpad gestures can each do their own thing
-controls.autoRotate = !calm; controls.autoRotateSpeed = 0.35;
-
-const U = {   // shared by every material, so one slider drives the whole map
-  uYear: { value: 2030 }, uTime: { value: 0 }, uScale: { value: 1 }, uFocus: { value: -1 },
-  uTypes: { value: new THREE.Vector4(1, 1, 1, 1) }, uPR: { value: renderer.getPixelRatio() }, uWeight: { value: 1 },
-};
-// Keep the map centred in the space the side panel leaves free.
-const setOffset = () => { if (innerWidth > 760) camera.setViewOffset(innerWidth, innerHeight, -134, 0, innerWidth, innerHeight); else camera.clearViewOffset(); };
-setOffset();
-const setScale = () => { U.uScale.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))); };
-setScale();
-
-// Points are flat discs with a soft edge, blended normally (not additively), so dense
-// areas stay readable instead of burning out to white. Size follows weight when uWeight is on.
-const pointMat = new THREE.ShaderMaterial({
-  uniforms: U, transparent: true, depthWrite: false,
-  vertexShader: `
-    attribute vec3 aColor; attribute float aSize, aYear, aType, aGroup, aSeed, aGlow, aDim, aWeight;
-    uniform float uYear, uTime, uScale, uFocus, uPR, uWeight; uniform vec4 uTypes;
-    varying vec3 vC; varying float vA;
-    void main() {
-      vec4 mv = modelViewMatrix * vec4(position, 1.0);
-      gl_Position = projectionMatrix * mv;
-      float tm = aType < 0.5 ? uTypes.x : aType < 1.5 ? uTypes.y : aType < 2.5 ? uTypes.z : uTypes.w;
-      float on = step(aYear, uYear) * aDim * tm;
-      float foc = (uFocus < -0.5 || abs(aGroup - uFocus) < 0.5) ? 1.0 : 0.1;
-      float fresh = smoothstep(uYear - 1.0, uYear, aYear);            // the growing tip is a little brighter
-      float w = mix(1.0, 0.5 + 1.4 * aWeight * aWeight * aWeight, uWeight);
-      float px = 0.6 * aSize * w * (1.0 + fresh * 0.2 + aGlow * 0.4) * uScale / -mv.z;
-      gl_PointSize = on * clamp(px, 1.5 * uPR, (6.0 + 10.0 * aWeight * uWeight) * uPR);
-      vC = mix(aColor, vec3(1.0), fresh * 0.15 + aGlow * 0.2);
-      vA = on * foc * mix(1.0, 0.45 + 0.55 * aWeight, uWeight * 0.8) * (0.96 + 0.04 * sin(uTime * 1.1 + aSeed * 40.0));
-    }`,
-  fragmentShader: `
-    varying vec3 vC; varying float vA;
-    void main() {
-      float d = length(gl_PointCoord - 0.5) * 2.0;
-      if (d > 1.0) discard;
-      gl_FragColor = vec4(vC, smoothstep(1.0, 0.75, d) * 0.85 * vA);
-    }`,
-});
-const lineMat = (opacity) => new THREE.ShaderMaterial({
-  uniforms: { ...U, uOpacity: { value: opacity } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-  vertexShader: `
-    attribute vec3 aColor; attribute float aYear, aGroup;
-    uniform float uYear, uFocus, uOpacity; varying vec4 vC;
-    void main() {
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      float foc = (uFocus < -0.5 || abs(aGroup - uFocus) < 0.5) ? 1.0 : 0.12;
-      vC = vec4(aColor, step(aYear, uYear) * uOpacity * foc);
-    }`,
-  fragmentShader: `varying vec4 vC; void main() { if (vC.a < 0.004) discard; gl_FragColor = vC; }`,
-});
-
-class Segments {   // collects coloured line segments, then becomes one LineSegments
-  constructor() { this.p = []; this.c = []; this.y = []; this.g = []; }
-  add(a, b, ca, cb, year, group) {
-    this.p.push(a.x, a.y, a.z, b.x, b.y, b.z); this.c.push(ca.r, ca.g, ca.b, cb.r, cb.g, cb.b);
-    this.y.push(year, year); this.g.push(group, group);
-  }
-  curve(a, b, ca, cb, year, group, lift, steps = 10) {
-    const mid = a.clone().add(b).multiplyScalar(0.5); mid.y += lift;
-    const q = new THREE.QuadraticBezierCurve3(a, mid, b).getPoints(steps);
-    for (let k = 0; k < steps; k++) {
-      this.add(q[k], q[k + 1], ca.clone().lerp(cb, k / steps), ca.clone().lerp(cb, (k + 1) / steps), year, group);
-    }
-  }
-  mesh(opacity) {
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(this.p, 3));
-    geo.setAttribute('aColor', new THREE.Float32BufferAttribute(this.c, 3));
-    geo.setAttribute('aYear', new THREE.Float32BufferAttribute(this.y, 1));
-    geo.setAttribute('aGroup', new THREE.Float32BufferAttribute(this.g, 1));
-    const m = new THREE.LineSegments(geo, lineMat(opacity)); m.frustumCulled = false; scene.add(m); return m;
-  }
-}
-
-function label(text, sub, { color = '#eceef3', size = 44, world = 30 } = {}) {
-  const c = document.createElement('canvas'); c.width = 640; c.height = 160;
-  const g = c.getContext('2d'); g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.shadowColor = 'rgba(0,0,0,.9)'; g.shadowBlur = 10;
-  g.font = `600 ${size}px -apple-system, "Helvetica Neue", "Hiragino Sans", sans-serif`; g.fillStyle = color;
-  g.fillText(text, 320, sub ? 62 : 80);
-  if (sub) { g.font = '400 26px -apple-system, "Hiragino Sans", sans-serif'; g.fillStyle = 'rgba(236,238,243,.62)'; g.fillText(sub, 320, 112); }
-  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
-  s.scale.set(world, world / 4, 1); s.renderOrder = 5; scene.add(s); return s;
-}
-
-// ---------- state ----------
-let domainColors, langColors;
-let D, items, N, FAB, maxYear, geo, hiLines = null, ring = null;
-let baseOn = -1, baseLines = null; const baseLabels = [];
-let selected = -1, focus = -1, yearNow = 2030, typeOn = [1, 1, 1, 1];
-const pos = [], neighbours = [], groupLabels = [], cityLabels = [], glowing = [], byPerson = [], byClient = [];
-// Language classes for the language view. lg is a bit set: 1 Japanese, 2 English, 4 Traditional Chinese.
-const LANGS = [
-  { key: 'jp', en: 'Japanese only', color: '#5b6478', test: (lg) => lg === 1 },
-  { key: 'jpen', en: 'Also in English', color: '#4DB4FF', test: (lg) => (lg & 1) && (lg & 2) },
-  { key: 'jptc', en: 'Also in Traditional Chinese only', color: '#5ED39A', test: (lg) => lg === 5 },
-  { key: 'other', en: 'No Japanese version', color: '#FF8A3D', test: (lg) => !(lg & 1) },
-];
-const langOf = (it) => LANGS.findIndex((l) => l.test(it.lg ?? 1));
-let langView = false, jpOnly = true;
-const colorOf = (it) => langView ? LANGS[langOf(it)].color : it.d === FAB && it.t !== 2 ? FAB_WHITE : D.groups[it.d].color;
-const urlOf = (it) => it.u || `https://loftwork.com/${it.l}/${D.types[it.t]}/${it.s}`;
-const shown = (i) => items[i].f <= yearNow && typeOn[items[i].t] && geo.attributes.aDim.array[i] > 0 && (focus < 0 || items[i].d === focus);
-
-function build(data) {
-  D = data; items = data.items; N = items.length; FAB = data.groups.length - 1;
-  maxYear = Math.ceil(Math.max(...items.map((i) => i.f)));
-  const A = (n) => new Float32Array(N * n);
-  const P = A(3), C = A(3), S = A(1), Y = A(1), T = A(1), G = A(1), R = A(1), GL = A(1), DM = A(1).fill(1), W = A(1);
-  items.forEach((it, i) => {
-    W[i] = it.w ?? 0.5;
-    if (it.p) for (const p of it.p) (byPerson[p] ||= []).push(i);
-    if (it.ci != null) (byClient[it.ci] ||= []).push(i);
-  });
-  const gc = data.groups.map((g) => new THREE.Color(g.color)), white = new THREE.Color(FAB_WHITE);
-  const twigs = new Segments();
-  items.forEach((it, i) => {
-    const p = new THREE.Vector3(it.x, yOf(it.f), it.z); pos.push(p); neighbours.push([]);
-    const c = new THREE.Color(colorOf(it));
-    P.set([p.x, p.y, p.z], i * 3); C.set([c.r, c.g, c.b], i * 3);
-    S[i] = TYPE_SIZE[it.t] * (it.d === FAB ? 1.15 : 1); Y[i] = it.f; T[i] = it.t; G[i] = it.d; R[i] = (i * 0.618034) % 1;
-    twigs.add(new THREE.Vector3(it.ax, p.y, it.az), p, gc[it.d], c, it.f, it.d);
-  });
-  geo = new THREE.BufferGeometry();
-  for (const [name, arr, n] of [['position', P, 3], ['aColor', C, 3], ['aSize', S, 1], ['aYear', Y, 1], ['aType', T, 1],
-    ['aGroup', G, 1], ['aSeed', R, 1], ['aGlow', GL, 1], ['aDim', DM, 1], ['aWeight', W, 1]]) geo.setAttribute(name, new THREE.BufferAttribute(arr, n));
-  domainColors = C.slice();
-  langColors = new Float32Array(N * 3);
-  items.forEach((it, i) => { const c = new THREE.Color(LANGS[langOf(it)].color); langColors.set([c.r, c.g, c.b], i * 3); });
-  const points = new THREE.Points(geo, pointMat); points.frustumCulled = false; points.renderOrder = 2; scene.add(points);
-  twigs.mesh(0.1);
-
-  // Skeleton: the trunk and branches each organism grows along.
-  const bones = new Segments();
-  for (const b of data.skeleton) {
-    for (let k = 0; k + 3 < b.p.length; k += 2) {
-      const t1 = b.t0 + (k / 2) * data.sample, t2 = t1 + data.sample;
-      bones.add(new THREE.Vector3(b.p[k], yOf(t1), b.p[k + 1]), new THREE.Vector3(b.p[k + 2], yOf(t2), b.p[k + 3]), gc[b.g], gc[b.g], t2, b.g);
-    }
-  }
-  bones.mesh(0.38);
-
-  // Connections between items: links on the page, and sub-pages to their parent.
-  const links = new Segments();
-  for (let k = 0; k < data.edges.length; k += 2) {
-    const a = data.edges[k], b = data.edges[k + 1];
-    neighbours[a].push(b); neighbours[b].push(a);
-    const far = pos[a].distanceTo(pos[b]);
-    links.curve(pos[a], pos[b], gc[items[a].d], gc[items[b].d], Math.max(items[a].f, items[b].f), items[a].d === items[b].d ? items[a].d : -2, far * 0.12, far > 12 ? 10 : 4);
-  }
-  links.mesh(0.14);
-
-  // Bridges: strands between organisms that share work. More shared work, more strands.
-  const bridges = new Segments();
-  const trunk = (g, t) => new THREE.Vector3(data.groups[g].x, yOf(t), data.groups[g].z);
-  const strands = (a, b, n, weight) => {
-    const from = Math.max(data.groups[a].t0, data.groups[b].t0) + 2;
-    for (let k = 0; k < n; k++) {
-      const t = from + (k + 0.5) * (maxYear - 1 - from) / n;
-      bridges.curve(trunk(a, t), trunk(b, t + 0.6), gc[a], gc[b], t + 0.6, -2, 3 + 2.5 * ((k * 7) % 3) + weight, 28);
-    }
-  };
-  for (const [g, n] of data.bridges.fab) strands(FAB, g, Math.max(1, Math.min(6, Math.round(n / 14))), 6);
-  for (const [a, b, n] of data.bridges.domains) strands(a, b, Math.max(1, Math.min(3, Math.round(n / 30))), 0);
-  bridges.mesh(0.22);
-
-  // Bases: a label where each one started, always shown once the timeline reaches it.
-  data.bases.forEach((b) => {
-    const st = items[b.start], s = label(b.en, `since ${Math.floor(st.f)} · ${b.members.length} pieces`, { size: 50, world: 24 });
-    s.position.copy(pos[b.start]).add(new THREE.Vector3(0, 4.2, 0)); s.userData.t0 = st.f; baseLabels.push(s);
-  });
-
-  // Labels.
-  data.groups.forEach((g, i) => {
-    const s = i === FAB ? label('FabCafe', `${g.count} nodes · ${data.cities.length - 1} cities and the network`, { size: 58, world: 42 })
-      : label(g.en, g.jp, { color: g.color });
-    s.position.set(g.x, yOf(g.top) + (i === FAB ? 10 : 6), g.z); s.userData.t0 = g.t0; s.userData.top = g.top; s.userData.lift = i === FAB ? 10 : 6; groupLabels.push(s);
-  });
-  data.groups[FAB].tips.forEach(([x, z, t], b) => {
-    const s = label(data.cities[b].en, null, { size: 40, world: 15 });
-    const out = new THREE.Vector2(x - data.groups[FAB].x, z - data.groups[FAB].z).normalize().multiplyScalar(5);
-    s.position.set(x + out.x, yOf(t) + 2.5, z + out.y); s.userData.t0 = data.groups[FAB].t0 + 3; cityLabels.push(s);
-  });
-  // Year axis, standing between the Loftwork ring and FabCafe.
-  const ax = data.groups[FAB].x * 0.62, az = -40, axis = new Segments(), grey = new THREE.Color('#3a4154');
-  axis.add(new THREE.Vector3(ax, yOf(Y0), az), new THREE.Vector3(ax, yOf(maxYear), az), grey, grey, 0, -2);
-  for (let y = Y0; y <= maxYear; y++) {
-    axis.add(new THREE.Vector3(ax - (y % 5 ? 0.6 : 1.6), yOf(y), az), new THREE.Vector3(ax, yOf(y), az), grey, grey, 0, -2);
-    if (y % 5 === 0 || y === maxYear) { const s = label(String(y), null, { color: '#8b93a7', size: 46, world: 13 }); s.position.set(ax - 7, yOf(y), az); }
-  }
-  axis.mesh(1);
-  ring = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.72, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthTest: false, side: THREE.DoubleSide }));
-  ring.visible = false; ring.renderOrder = 6; scene.add(ring);
-
-  buildPanel(); pickGlow(); setView('all', 0); applyFilter();
-  const yr = $('year'); yr.min = Y0; yr.max = maxYear; yr.value = maxYear; setYear(maxYear);
-  $('sub').textContent = `${N.toLocaleString()} pieces of work · ${Y0}–${maxYear - 1} · updated ${data.generated}`;
-}
-
-// ---------- side panel ----------
-function buildPanel() {
-  D.groups.forEach((g, i) => {
-    if (i === FAB) return;
-    const b = el('button', 'row'); b.setAttribute('aria-pressed', 'false'); b.dataset.g = i;
-    const dot = el('span', 'dot'); dot.style.background = g.color;
-    const name = el('span', null, g.en + ' '); name.append(el('small', null, g.jp));
-    b.append(dot, name, el('span', 'n', g.count.toLocaleString()));
-    b.addEventListener('click', () => setFocus(focus === i ? -1 : i));
-    $('domains').append(b);
-  });
-  const f = D.groups[FAB], dot = el('span', 'dot'); dot.style.background = 'var(--fab)';
-  $('fabRow').append(dot, el('span', null, 'FabCafe'), el('span', 'n', f.count.toLocaleString()));
-  $('fabRow').dataset.g = FAB;
-  $('fabRow').addEventListener('click', () => setFocus(focus === FAB ? -1 : FAB));
-  D.cities.forEach((c, b) => {
-    const btn = el('button', null, c.en); btn.append(el('span', null, c.count));
-    btn.addEventListener('click', () => {
-      setFocus(FAB, false);
-      const [x, z, t] = f.tips[b], tip = new THREE.Vector3(x, yOf(t) - 8, z);
-      const out = new THREE.Vector3(x - f.x, 0, z - f.z).normalize();
-      flyTo(tip, tip.clone().addScaledVector(out, 34).add(new THREE.Vector3(0, 14, 0)));
-    });
-    $('cities').append(btn);
-  });
-  D.bases.forEach((b, k) => {
-    const btn = el('button', null, b.en); btn.append(el('span', null, Math.floor(items[b.start].f)));
-    btn.setAttribute('aria-pressed', 'false'); btn.title = `${b.members.length} pieces, since ${Math.floor(items[b.start].f)}`;
-    btn.addEventListener('click', () => setBase(baseOn === k ? -1 : k));
-    $('bases').append(btn);
-  });
-  const jp = items.filter((it) => (it.lg ?? 1) & 1).length;
-  $('jpOnlyN').textContent = jp.toLocaleString();
-  LANGS.forEach((l) => {
-    const row = el('div', 'row'), dot = el('span', 'dot'); dot.style.background = l.color;
-    row.append(dot, el('span', null, l.en), el('span', 'n', items.filter((it) => LANGS[langOf(it)] === l).length.toLocaleString()));
-    $('langs').append(row);
-  });
-  TYPE_LABEL.forEach((name, t) => {
-    const row = el('label', 'type'), box = el('input'); box.type = 'checkbox'; box.checked = true;
-    row.append(box, el('span', null, name), el('span', 'n', items.filter((i) => i.t === t).length.toLocaleString()));
-    box.addEventListener('change', () => { typeOn[t] = box.checked ? 1 : 0; U.uTypes.value.setComponent(t, typeOn[t]); refreshGlow(); });
-    $('types').append(row);
-  });
-}
-$('weighted').addEventListener('change', (e) => { U.uWeight.value = e.target.checked ? 1 : 0; });
-$('sideToggle').addEventListener('click', (e) => {
-  const closed = $('side').classList.toggle('closed');
-  e.target.textContent = closed ? 'Menu' : 'Hide'; e.target.setAttribute('aria-expanded', String(!closed));
-});
-if (innerWidth <= 760) $('sideToggle').click();
-
-// Search and the Japanese-only switch both decide which dots are on (aDim).
-function applyFilter() {
-  const q = $('search').value.trim().toLowerCase(), dim = geo.attributes.aDim.array; let n = 0;
-  items.forEach((it, i) => {
-    const hit = (!jpOnly || ((it.lg ?? 1) & 1)) && (baseOn < 0 || (it.b || []).includes(baseOn)) &&
-      (!q || [it.n, it.s, it.c, ...(it.g || []).map((s) => D.tags[s])].join(' ').toLowerCase().includes(q));
-    dim[i] = hit ? 1 : 0; n += hit;
-  });
-  geo.attributes.aDim.needsUpdate = true; refreshGlow();
-  if (selected >= 0 && !dim[selected]) closeCard();
-  $('found').textContent = q ? `${n.toLocaleString()} match${n === 1 ? '' : 'es'}` : '';
-}
-$('search').addEventListener('input', applyFilter);
-$('jpOnly').addEventListener('change', (e) => { jpOnly = e.target.checked; applyFilter(); });
-$('langView').addEventListener('click', () => {
-  langView = !langView; $('langView').setAttribute('aria-pressed', String(langView)); $('langs').hidden = !langView;
-  geo.attributes.aColor.array.set(langView ? langColors : domainColors); geo.attributes.aColor.needsUpdate = true;
-  if (selected >= 0) select(selected, false);   // redraw its lines and dots in the new colours
-});
-
-function setFocus(g, fly = true) {
-  focus = g; U.uFocus.value = g;
-  document.querySelectorAll('[data-g]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.g === g)));
-  refreshGlow();
-  if (g < 0) { if (fly) setView('all'); return; }
-  if (!fly) return;
-  if (g === FAB) return setView('fabcafe');
-  const gr = D.groups[g], mid = (yOf(gr.t0) + yOf(gr.top)) / 2, target = new THREE.Vector3(gr.x, mid, gr.z);
-  const out = target.clone().setY(0).lengthSq() > 1 ? target.clone().setY(0).normalize() : new THREE.Vector3(0.6, 0, 0.8);
-  flyTo(target, target.clone().addScaledVector(out, 62 * fit()).add(new THREE.Vector3(0, 22, 0)));
-  markView(null);
-}
-
-// ---------- camera ----------
-const fit = () => Math.max(1, 1.35 / camera.aspect || 1);   // || 1: a hidden tab can report a 0×0 window
-let tween = null;
-function flyTo(target, eye, ms = 1500) {
-  if (calm || ms === 0) { controls.target.copy(target); camera.position.copy(eye); tween = null; return; }
-  tween = { t0: performance.now(), ms, fromT: controls.target.clone(), fromE: camera.position.clone(), toT: target, toE: eye };
-}
-function markView(name) { document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === name))); }
-function setView(name, ms) {
-  const fx = D.groups[FAB].x, k = fit();
-  const v = {
-    all: [new THREE.Vector3(fx * 0.36, 25, 0), new THREE.Vector3(fx * 0.36 - 24 * k, 25 + 40 * k, 190 * k)],
-    loftwork: [new THREE.Vector3(0, 30, 0), new THREE.Vector3(-52 * k, 30 + 44 * k, 108 * k)],
-    fabcafe: [new THREE.Vector3(fx, 32, 0), new THREE.Vector3(fx + 30 * k, 32 + 24 * k, 80 * k)],
-  }[name];
-  flyTo(v[0], v[1], ms); markView(name);
-}
-document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
-  stopSurf(); if (focus >= 0) setFocus(-1, false); setView(b.dataset.view);
-}));
-
-// ---------- timeline ----------
-function setYear(v) {
-  yearNow = v >= maxYear ? 2030 : v; U.uYear.value = yearNow;
-  $('yearLabel').textContent = v >= maxYear ? 'All' : Math.floor(v);
-  for (const s of groupLabels.concat(cityLabels)) s.visible = s.userData.t0 <= yearNow;
-  baseLabels.forEach((s, k) => { s.visible = s.userData.t0 <= yearNow && (baseOn < 0 || baseOn === k); });
-  for (const s of groupLabels) s.position.y = yOf(Math.min(s.userData.top, yearNow)) + s.userData.lift;   // labels ride the growing tip
-  refreshGlow();
-}
-$('year').addEventListener('input', (e) => { playing = null; $('play').textContent = '▶'; setYear(+e.target.value); });
-let playing = null;
-$('play').addEventListener('click', () => {
-  if (playing) { playing = null; $('play').textContent = '▶'; return; }
-  const from = +$('year').value >= maxYear ? Y0 : +$('year').value;
-  playing = { t0: performance.now(), from }; $('play').textContent = '❚❚';
-});
-
-// ---------- glowing nodes with key visuals ----------
-function pickGlow() {
-  for (const g of glowing) { scene.remove(g.sprite); g.sprite.material.map?.dispose(); g.sprite.material.dispose(); }
-  glowing.length = 0;
-  const glow = geo.attributes.aGlow.array.fill(0);
-  // Weighted shuffle: heavier pieces are more likely to show their picture, but any can.
-  const key = (i) => Math.random() ** (1 / (0.15 + (items[i].w ?? 0.5)));
-  const pool = items.map((it, i) => (it.k ? [i, key(i)] : null)).filter(Boolean).sort((a, b) => b[1] - a[1]).map(([i]) => i);
-  const fab = pool.filter((i) => items[i].d === FAB).slice(0, GLOW_FABCAFE);
-  const rest = pool.filter((i) => items[i].d !== FAB).slice(0, GLOW_COUNT - fab.length);
-  for (const i of [...fab, ...rest].sort(() => Math.random() - 0.5)) {
-    glow[i] = 1;
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, opacity: 0 }));
-    sprite.center.set(0.5, 0); sprite.position.copy(pos[i]).add(new THREE.Vector3(0, 2.6, 0)); sprite.renderOrder = 4; sprite.userData.i = i;
-    scene.add(sprite); glowing.push({ i, sprite });
-    const img = new Image();
-    img.onload = () => {   // rounded card with a border in the organism's colour
-      const w = img.width, h = img.height, c = document.createElement('canvas'); c.width = w; c.height = h;
-      const g = c.getContext('2d'); g.beginPath(); g.roundRect(2, 2, w - 4, h - 4, 18); g.clip(); g.drawImage(img, 0, 0, w, h);
-      g.lineWidth = 4; g.strokeStyle = items[i].d === FAB ? '#D81C19' : D.groups[items[i].d].color; g.stroke();
-      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-      tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter;
-      const size = 7 + 5 * (items[i].w ?? 0.5);   // heavier pieces get a bigger picture
-      sprite.material.map = tex; sprite.material.opacity = 0.95; sprite.material.needsUpdate = true; sprite.scale.set(size, size * h / w, 1);
-    };
-    img.src = `thumbs/${items[i].k}.jpg`;
-  }
-  geo.attributes.aGlow.needsUpdate = true; refreshGlow();
-}
-function refreshGlow() { for (const g of glowing) g.sprite.visible = shown(g.i); }
-$('shuffle').addEventListener('click', () => { pickGlow(); surfAt = 0; });
-
-let surfing = null, surfAt = 0;
-function stopSurf() { if (surfing) { clearInterval(surfing); surfing = null; $('surf').setAttribute('aria-pressed', 'false'); $('surf').textContent = 'Surf ▸'; } }
-function surfNext() {
-  const live = glowing.filter((g) => shown(g.i)); if (!live.length) return stopSurf();
-  select(live[surfAt++ % live.length].i, true);
-}
-$('surf').addEventListener('click', () => {
-  if (surfing) return stopSurf();
-  $('surf').setAttribute('aria-pressed', 'true'); $('surf').textContent = 'Surfing ❚❚';
-  controls.autoRotate = !calm; surfNext(); surfing = setInterval(surfNext, 6500);
-});
-
-// ---------- hover, select, card ----------
-const v = new THREE.Vector3();
-function pick(x, y) {
-  let best = -1, bestD = Infinity;
-  const h = innerHeight, w = innerWidth, px = U.uScale.value / renderer.getPixelRatio();
-  for (let i = 0; i < N; i++) {
-    if (!shown(i)) continue;
-    v.copy(pos[i]).project(camera); if (v.z > 1 || v.z < -1) continue;
-    const dx = (v.x + 1) * w / 2 - x, dy = (1 - v.y) * h / 2 - y, d = dx * dx + dy * dy;
-    const reach = Math.max(12, 0.7 * TYPE_SIZE[items[i].t] * px / camera.position.distanceTo(pos[i]));   // forgiving on a trackpad
-    if (d < reach * reach && d < bestD) { best = i; bestD = d; }
-  }
-  return best;
-}
-const langCodes = (it) => ['JP', 'EN', 'TC'].filter((_, k) => (it.lg ?? 1) & (1 << k)).join('/');
-const metaOf = (it) => [it.d === FAB ? `FabCafe ${D.cities[it.fc].en}` : D.groups[it.d].en, TYPE_ONE[it.t], it.y, langCodes(it), it.c].filter(Boolean).join(' · ');
-let moveQueued = null, downAt = null;
-const dom = renderer.domElement;
-dom.addEventListener('pointermove', (ev) => {
-  if (moveQueued) { moveQueued = ev; return; }
-  moveQueued = ev;
-  requestAnimationFrame(() => {
-    const e = moveQueued; moveQueued = null; const tip = $('tip'), i = e.pointerType === 'touch' ? -1 : pick(e.clientX, e.clientY);
-    if (i < 0) { tip.style.display = 'none'; dom.style.cursor = ''; return; }
-    tip.replaceChildren(el('b', null, items[i].n || items[i].s), el('span', null, metaOf(items[i])));
-    tip.style.display = 'block'; dom.style.cursor = 'pointer';
-    tip.style.left = Math.min(e.clientX + 14, innerWidth - 316) + 'px'; tip.style.top = Math.min(e.clientY + 14, innerHeight - 70) + 'px';
-  });
-});
-dom.addEventListener('pointerdown', (ev) => { downAt = [ev.clientX, ev.clientY]; controls.autoRotate = false; tween = null; stopSurf(); });
-// Trackpad: two fingers sideways orbit, up/down travel through the years, pinch zooms toward
-// the cursor, Shift + two fingers pans. A mouse wheel (coarse steps) zooms.
-const spherical = new THREE.Spherical(), off = new THREE.Vector3(), ndc = new THREE.Vector2(), ray = new THREE.Raycaster();
-function zoomAt(factor, x, y) {
-  const dist = camera.position.distanceTo(controls.target);
-  if (!innerWidth || !innerHeight || !isFinite(factor)) return;   // hidden tab: no size to aim at
-  factor = THREE.MathUtils.clamp(dist * factor, controls.minDistance, controls.maxDistance) / dist;
-  ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
-  const p = ray.ray.at(dist, new THREE.Vector3());          // the point under the cursor, at the target's depth
-  controls.target.lerp(p, 1 - factor);
-  camera.position.sub(p).multiplyScalar(factor).add(p);
-}
-dom.addEventListener('wheel', (e) => {
-  e.preventDefault(); controls.autoRotate = false; tween = null; stopSurf();
-  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1, dx = e.deltaX * unit, dy = e.deltaY * unit;
-  // Trackpads report wheelDeltaY exactly -3 × deltaY; mouse wheels report steps of 120 that don't match.
-  // Where wheelDeltaY is missing (Firefox), line/page delta modes mean a mouse.
-  const trackpad = e.wheelDeltaY ? e.wheelDeltaY === -3 * e.deltaY : e.deltaMode === 0 && (dx !== 0 || !Number.isInteger(dy));
-  const mouseWheel = !trackpad && dx === 0;
-  if (e.ctrlKey || e.metaKey || e.altKey || mouseWheel)
-    return zoomAt(Math.exp(THREE.MathUtils.clamp(dy, -120, 120) * (e.ctrlKey ? 0.012 : 0.002)), e.clientX, e.clientY);
-  const dist = camera.position.distanceTo(controls.target);
-  if (e.shiftKey) {   // pan in the screen plane
-    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
-    const move = right.multiplyScalar(dx * dist * 0.0012).add(up.multiplyScalar(-dy * dist * 0.0012));
-    controls.target.add(move); camera.position.add(move); return;
-  }
-  off.copy(camera.position).sub(controls.target); spherical.setFromVector3(off);
-  spherical.theta -= dx * 0.0035; off.setFromSpherical(spherical);
-  const lift = THREE.MathUtils.clamp(controls.target.y - dy * dist * 0.0011, yOf(Y0) - 10, yOf(maxYear ?? 2027) + 20) - controls.target.y;
-  controls.target.y += lift; camera.position.copy(controls.target).add(off);
-}, { passive: false });
-dom.addEventListener('pointerup', (ev) => {
-  if (!downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 8) return;   // it was a drag
-  const i = pick(ev.clientX, ev.clientY); if (i >= 0) select(i, false); else closeCard();
-});
-addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeCard(); stopSurf(); } });
-
-// Three ways two pieces relate, strongest first: one page links to the other (or is its
-// sub-page); they were for the same client; the same Loftwork people worked on both.
-// Each list is shown up to the current year, heaviest first.
-function relationsOf(i) {
-  const it = items[i], seen = new Set([i]), live = (j) => !seen.has(j) && items[j].f <= yearNow;
-  const take = (list) => { const out = list.filter(live); out.forEach((j) => seen.add(j)); return out; };
-  const byW = (a, b) => (items[b].w ?? 0) - (items[a].w ?? 0);
-  const linked = take([...neighbours[i]].sort(byW));
-  const client = it.ci != null ? take([...byClient[it.ci]].sort(byW)) : [];
-  const shared = new Map();
-  for (const p of it.p || []) for (const j of byPerson[p]) shared.set(j, (shared.get(j) || 0) + 1);
-  const people = take([...shared.keys()].sort((a, b) => shared.get(b) - shared.get(a) || byW(a, b))).slice(0, 12);
-  return { linked, client, people };
-}
-const personName = (slug) => slug.split(/[_-]/).map((s) => s[0].toUpperCase() + s.slice(1)).join(' ');
-function weightText(it) {
-  const top = Math.max(1, Math.round((1 - (it.w ?? 0.5)) * 100));
-  const [cited, langs, parts, people] = it.h || [0, 1, 0, 0];
-  const why = [cited && `cited by ${cited} page${cited > 1 ? 's' : ''}`, langs > 1 && `translated (${langCodes(it)})`,
-    parts && `${parts} sub-page${parts > 1 ? 's' : ''}`, people && `${people} people credited`].filter(Boolean);
-  return `Weight: top ${top}%` + (why.length ? ' · ' + why.join(' · ') : '');
-}
-
-function select(i, fly) {
-  selected = i; const it = items[i], card = $('card');
-  if (hiLines) { scene.remove(hiLines); hiLines.geometry.dispose(); hiLines = null; }
-  const rel = relationsOf(i), all = [...rel.linked, ...rel.client, ...rel.people];
-  if (all.length) {
-    const s = new Segments(), w = new THREE.Color('#ffffff');
-    for (const j of all) s.curve(pos[i], pos[j], w, new THREE.Color(colorOf(items[j])), 0, -2, pos[i].distanceTo(pos[j]) * 0.12, 12);
-    hiLines = s.mesh(0.8); hiLines.renderOrder = 3;
-  }
-  ring.position.copy(pos[i]); ring.visible = true;
-
-  card.replaceChildren();
-  const src = it.k ? `thumbs/${it.k}.jpg` : it.i ? D.img + it.i : null;
-  if (src) { const img = el('img'); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.onerror = () => img.remove(); img.src = src; card.append(img); }
-  const close = el('button', null, '✕'); close.id = 'close'; close.setAttribute('aria-label', 'Close'); close.addEventListener('click', closeCard);
-  const body = el('div', 'body'), where = el('div', 'where'), dot = el('span', 'dot');
-  dot.style.background = it.d === FAB ? 'var(--fab)' : D.groups[it.d].color; where.append(dot, el('span', null, metaOf(it)));
-  body.append(where, el('h3', null, it.n || it.s));
-  const tagNames = (it.g || []).map((s) => D.tags[s]).filter(Boolean);
-  if (it.d === FAB && it.dd < FAB - 1) tagNames.unshift(D.groups[it.dd].en);
-  if (it.d2 != null) tagNames.unshift('also ' + D.groups[it.d2].en);
-  if (tagNames.length) { const tags = el('div', 'tags'); tagNames.slice(0, 6).forEach((t) => tags.append(el('span', null, t))); body.append(tags); }
-  body.append(el('div', 'weight', weightText(it)));
-  for (const k of it.b || []) {
-    const b = D.bases[k], row = el('div', 'base'), btn = el('button', null, b.en);
-    btn.addEventListener('click', () => setBase(baseOn === k ? -1 : k));
-    row.append(el('span', null, b.start === i ? 'Where this base started:' : 'Grew from:'), btn, el('span', null, `${b.members.length} pieces`));
-    body.append(row);
-  }
-  if (it.p) body.append(el('div', 'people', 'People · ' + it.p.map((p) => personName(D.people[p])).join(', ')));
-  const a = el('a', 'open', 'Open on loftwork.com ↗'); a.href = urlOf(it); a.target = '_blank'; a.rel = 'noopener'; body.append(a);
-  const grew = (it.b || []).filter((k) => D.bases[k].start === i).flatMap((k) =>
-    [[`Grew from this · ${D.bases[k].en}`, D.bases[k].members.filter((j) => j !== i && items[j].f <= yearNow && geo.attributes.aDim.array[j])]]);
-  for (const [title, list] of [...grew, ['Linked from or to this page', rel.linked], [`Same client · ${it.c || ''}`, rel.client], ['Same people', rel.people]]) {
-    if (!list.length) continue;
-    const box = el('div', 'links'); box.append(el('h2', null, `${title} · ${list.length}`)); box.firstChild.style.marginTop = '0';
-    for (const j of list.slice(0, title.startsWith('Grew') ? 12 : 6)) {
-      const b = el('button'), d = el('span', 'dot'); d.style.background = colorOf(items[j]);
-      b.append(d, el('span', null, `${items[j].n || items[j].s} `), el('small', null, items[j].y || ''));
-      b.addEventListener('click', () => { stopSurf(); select(j, true); }); box.append(b);
-    }
-    body.append(box);
-  }
-  card.append(close, body); card.style.display = 'block'; card.scrollTop = 0;
-  if (fly) {
-    const dir = camera.position.clone().sub(controls.target).setY(0); if (dir.lengthSq() < 1) dir.set(0, 0, 1);
-    flyTo(pos[i].clone(), pos[i].clone().addScaledVector(dir.normalize(), 30 * fit()).add(new THREE.Vector3(0, 9, 0)), 1800);
-  }
-}
-// Turning a base on shows only its pieces, draws a line from where it started to each
-// piece that grew from it, and opens the starting piece.
-function setBase(k) {
-  baseOn = k;
-  document.querySelectorAll('#bases button').forEach((b, j) => b.setAttribute('aria-pressed', String(j === k)));
-  if (baseLines) { scene.remove(baseLines); baseLines.geometry.dispose(); baseLines = null; }
-  applyFilter(); setYear(+$('year').value);
-  if (k < 0) return;
-  const b = D.bases[k], a = pos[b.start], s = new Segments(), w = new THREE.Color('#ffffff');
-  for (const j of b.members) if (j !== b.start) s.curve(a, pos[j], w, new THREE.Color(colorOf(items[j])), items[j].f, -2, a.distanceTo(pos[j]) * 0.15, 14);
-  baseLines = s.mesh(0.5); baseLines.renderOrder = 3;
-  if (focus >= 0) setFocus(-1, false);
-  stopSurf(); select(b.start, false);
-  // Frame the whole base: from where it started to its latest piece.
-  const box = new THREE.Box3().setFromPoints(b.members.map((j) => pos[j])), mid = box.getCenter(new THREE.Vector3());
-  const r = Math.max(14, box.getSize(new THREE.Vector3()).length() * 0.75);
-  const dir = camera.position.clone().sub(controls.target).setY(0); if (dir.lengthSq() < 1) dir.set(0, 0, 1);
-  flyTo(mid, mid.clone().addScaledVector(dir.normalize(), r * 1.6 * fit()).add(new THREE.Vector3(0, r * 0.35, 0)), 1600);
-}
-
-function closeCard() {
-  selected = -1; $('card').style.display = 'none'; ring.visible = false;
-  if (hiLines) { scene.remove(hiLines); hiLines.geometry.dispose(); hiLines = null; }
-}
-
-// ---------- loop ----------
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight); setOffset(); setScale();
-});
-const ease = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-renderer.setAnimationLoop((now) => {
-  if (!calm) U.uTime.value = now / 1000;
-  if (playing) {
-    const yv = playing.from + (now - playing.t0) / 1000 * 1.1;     // about 18 seconds for the full span
-    if (yv >= maxYear) { playing = null; $('play').textContent = '▶'; }
-    $('year').value = Math.min(yv, maxYear); setYear(Math.min(yv, maxYear));
-  }
-  if (tween) {
-    const k = Math.min(1, (now - tween.t0) / tween.ms), e = ease(k);
-    controls.target.lerpVectors(tween.fromT, tween.toT, e); camera.position.lerpVectors(tween.fromE, tween.toE, e);
-    if (k >= 1) tween = null;
-  }
-  controls.update();
-  if (ring?.visible) ring.quaternion.copy(camera.quaternion);
-  renderer.render(scene, camera);
-});
-
-fetch('data/items.json', { cache: 'no-cache' }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(build)
-  .catch((e) => {
-    console.error(e);
-    $('sub').textContent = 'no data'; $('err').style.display = 'block';
-    $('err').textContent = `Could not load the map (${e.message}). Run "python3 scripts/build_viewer.py" and open this page through a local server, not as a file.`;
-  });
-
-window.__map = { scene, camera, controls, U, select, setView, setFocus, get items() { return items; }, glowing };   // for the console
-</script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
