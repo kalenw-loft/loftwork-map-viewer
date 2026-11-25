@@ -1,9 +1,10 @@
 // Side panel, views, timeline, glowing nodes, Walk, the card and bases.
 import * as THREE from 'three';
-import { S, $, el, yOf, Y0, calm, TYPE_LABEL, GLOW_COUNT, GLOW_FABCAFE, LANGS, langOf, colorOf, urlOf, shown, langCodes, metaOf,
-  typeOn, pos, neighbours, groupLabels, cityLabels, baseLabels, glowing, byPerson, byClient } from './state.js';
+import { S, $, el, yOf, Y0, calm, TYPE_LABEL, GLOW_COUNT, GLOW_FABCAFE, LANGS, langOf, colorOf, urlOf, shown, shownHere, at, langCodes, metaOf,
+  typeOn, pos, fpos, neighbours, groupLabels, cityLabels, baseLabels, glowing, byPerson, byClient } from './state.js';
 import { scene, camera, renderer, controls, U, Segments, fit, flyTo, setOffset } from './scene.js';
 import { applyFilter } from './search.js';
+import { fog, refreshForest, recolorForest, entranceView, groveView, treeView, treeRadius } from './forest.js';
 
 let hiLines = null, baseLines = null;
 
@@ -26,7 +27,7 @@ export function buildPanel() {
   D.cities.forEach((c, b) => {
     const btn = el('button', null, c.en); btn.append(el('span', null, c.count));
     btn.addEventListener('click', () => {
-      setFocus(FAB, false);
+      setMode('map'); setFocus(FAB, false);
       const [x, z, t] = f.tips[b], tip = new THREE.Vector3(x, yOf(t) - 8, z);
       const out = new THREE.Vector3(x - f.x, 0, z - f.z).normalize();
       flyTo(tip, tip.clone().addScaledVector(out, 34).add(new THREE.Vector3(0, 14, 0)));
@@ -80,7 +81,7 @@ export function setPresent(on) {
   $('presentBtn').textContent = on ? 'Leave presentation mode' : 'Presentation mode';
   if (on) {
     S.playing = null; $('play').textContent = '▶'; $('year').value = S.maxYear; setYear(S.maxYear);   // show every year
-    stopWalk(); setSide(false);
+    stopWalk(); setSide(false); setView('loftwork');   // presenting starts in the Loftwork forest
   }
   history.replaceState(null, '', on ? '#present' : location.pathname + location.search);
 }
@@ -89,7 +90,7 @@ addEventListener('hashchange', () => setPresent(location.hash === '#present'));
 
 $('langView').addEventListener('click', () => {
   S.langView = !S.langView; $('langView').setAttribute('aria-pressed', String(S.langView)); $('langs').hidden = !S.langView;
-  S.geo.attributes.aColor.array.set(S.langView ? S.langColors : S.domainColors); S.geo.attributes.aColor.needsUpdate = true;
+  S.geo.attributes.aColor.array.set(S.langView ? S.langColors : S.domainColors); S.geo.attributes.aColor.needsUpdate = true; recolorForest();
   if (S.selected >= 0) select(S.selected, false);   // redraw its lines and dots in the new colours
 });
 
@@ -98,9 +99,10 @@ export function setFocus(g, fly = true) {
   S.focus = g; U.uFocus.value = g;
   document.querySelectorAll('[data-g]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.g === g)));
   refreshGlow();
-  if (g < 0) { if (fly) setView('all'); return; }
+  if (g < 0) { if (fly) setView(S.mode === 'forest' ? 'loftwork' : 'all'); return; }
   if (!fly) return;
   if (g === FAB) return setView('fabcafe');
+  if (S.mode === 'forest') { const [t, e] = groveView(g, fit()); flyTo(t, e); return markView('loftwork'); }
   const gr = D.groups[g], mid = (yOf(gr.t0) + yOf(gr.top)) / 2, target = new THREE.Vector3(gr.x, mid, gr.z);
   const out = target.clone().setY(0).lengthSq() > 1 ? target.clone().setY(0).normalize() : new THREE.Vector3(0.6, 0, 0.8);
   flyTo(target, target.clone().addScaledVector(out, 62 * fit()).add(new THREE.Vector3(0, 22, 0)));
@@ -109,11 +111,26 @@ export function setFocus(g, fly = true) {
 
 // ---------- views ----------
 function markView(name) { document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === name))); }
+// Switching between the 3D overview and the forest. They live in the same scene, far apart.
+export function setMode(mode) {
+  if (S.mode === mode) return;
+  if (S.baseOn >= 0) setBase(-1);
+  closeCard(); S.mode = mode;
+  const forest = mode === 'forest';
+  scene.fog = forest ? fog : null;
+  controls.minDistance = forest ? 1.5 : 6; controls.maxDistance = forest ? 260 : 420;
+  controls.maxPolarAngle = forest ? Math.PI * 0.49 : Math.PI;   // never look up from under the ground
+  if (forest) controls.autoRotate = false;
+  refreshGlow();
+}
 export function setView(name, ms) {
+  if (name === 'loftwork') {   // the Loftwork forest
+    setMode('forest'); const [t, e] = entranceView(fit()); flyTo(t, e, ms); return markView(name);
+  }
+  setMode('map');
   const fx = S.D.groups[S.FAB].x, k = fit();
   const v = {
     all: [new THREE.Vector3(fx * 0.36, 25, 0), new THREE.Vector3(fx * 0.36 - 24 * k, 25 + 40 * k, 190 * k)],
-    loftwork: [new THREE.Vector3(0, 30, 0), new THREE.Vector3(-52 * k, 30 + 44 * k, 108 * k)],
     fabcafe: [new THREE.Vector3(fx, 32, 0), new THREE.Vector3(fx + 30 * k, 32 + 24 * k, 80 * k)],
   }[name];
   flyTo(v[0], v[1], ms); markView(name);
@@ -158,7 +175,7 @@ export function pickGlow() {
   }
   S.geo.attributes.aGlow.needsUpdate = true; refreshGlow(); loadThumbsInView();
 }
-export function refreshGlow() { for (const g of glowing) g.sprite.visible = shown(g.i); }
+export function refreshGlow() { for (const g of glowing) g.sprite.visible = shown(g.i); refreshForest(); }
 
 // Pictures load lazily: only once their piece is shown (year, filters) and on screen within reach.
 const frustum = new THREE.Frustum(), viewProj = new THREE.Matrix4();
@@ -191,8 +208,8 @@ function loadThumb({ i, sprite }) {
 let walking = null, walkAt = 0;
 const narrowed = () => !!$('search').value.trim() || S.baseOn >= 0 || S.focus >= 0;
 function walkList() {
-  if (!narrowed()) return glowing.filter((g) => shown(g.i)).map((g) => g.i);
-  const out = []; for (let i = 0; i < S.N; i++) if (shown(i)) out.push(i);
+  if (!narrowed()) return glowing.filter((g) => shownHere(g.i)).map((g) => g.i);
+  const out = []; for (let i = 0; i < S.N; i++) if (shownHere(i) && (S.focus < 0 || S.items[i].d === S.focus)) out.push(i);
   return out.sort((a, b) => (S.items[b].w ?? 0) - (S.items[a].w ?? 0)).slice(0, 40);
 }
 export function syncWalk() {
@@ -210,7 +227,7 @@ function walkNext() {
 }
 function startWalk() {
   if (!S.items || !walkList().length) return;
-  walkAt = 0; controls.autoRotate = !calm; walkNext();
+  walkAt = 0; controls.autoRotate = !calm && S.mode === 'map'; walkNext();
   walking = setInterval(walkNext, 6500); syncWalk();
 }
 document.addEventListener('click', (e) => { if (e.target.closest('.walkBtn')) walking ? stopWalk() : startWalk(); });
@@ -243,15 +260,16 @@ function weightText(it) {
 
 export function select(i, fly) {
   const { D, items, FAB } = S;
-  S.selected = i; const it = items[i], card = $('card');
+  if (S.mode === 'forest' && !fpos[i]) { setMode('map'); markView(null); }   // FabCafe pieces have no tree yet (D2.2)
+  S.selected = i; const it = items[i], card = $('card'), pos = at();
   if (hiLines) { scene.remove(hiLines); hiLines.geometry.dispose(); hiLines = null; }
-  const rel = relationsOf(i), all = [...rel.linked, ...rel.client, ...rel.people];
+  const rel = relationsOf(i), all = [...rel.linked, ...rel.client, ...rel.people].filter((j) => pos[j]);
   if (all.length) {
     const s = new Segments(), w = new THREE.Color('#ffffff');
     for (const j of all) s.curve(pos[i], pos[j], w, new THREE.Color(colorOf(items[j])), 0, -2, pos[i].distanceTo(pos[j]) * 0.12, 12);
     hiLines = s.mesh(0.8); hiLines.renderOrder = 3;
   }
-  S.ring.position.copy(pos[i]); S.ring.visible = true;
+  S.ring.position.copy(pos[i]); S.ring.visible = true; S.ring.scale.setScalar(S.mode === 'forest' ? treeRadius(i) * 0.8 : 1);
 
   card.replaceChildren();
   const src = it.k ? `thumbs/${it.k}.jpg` : it.i ? D.img + it.i : null;
@@ -286,7 +304,8 @@ export function select(i, fly) {
     body.append(box);
   }
   card.append(close, body); card.style.display = 'block'; card.scrollTop = 0;
-  if (fly) {
+  if (fly && S.mode === 'forest') { const [t, e] = treeView(i, camera.position, fit()); flyTo(t, e, 1800); }
+  else if (fly) {
     const dir = camera.position.clone().sub(controls.target).setY(0); if (dir.lengthSq() < 1) dir.set(0, 0, 1);
     flyTo(pos[i].clone(), pos[i].clone().addScaledVector(dir.normalize(), 30 * fit()).add(new THREE.Vector3(0, 9, 0)), 1800);
   }
@@ -296,19 +315,21 @@ export function select(i, fly) {
 // Turning a base on shows only its pieces, draws a line from where it started to each
 // piece that grew from it, and opens the starting piece.
 export function setBase(k) {
-  const { D, items } = S;
+  if (k >= 0 && S.mode === 'forest' && !fpos[S.D.bases[k].start]) { setMode('map'); markView(null); }   // a FabCafe base
+  const { D, items } = S, pos = at();
   S.baseOn = k;
   document.querySelectorAll('#bases button').forEach((b, j) => b.setAttribute('aria-pressed', String(j === k)));
   if (baseLines) { scene.remove(baseLines); baseLines.geometry.dispose(); baseLines = null; }
   applyFilter(); setYear(+$('year').value);
   if (k < 0) return;
   const b = D.bases[k], a = pos[b.start], s = new Segments(), w = new THREE.Color('#ffffff');
-  for (const j of b.members) if (j !== b.start) s.curve(a, pos[j], w, new THREE.Color(colorOf(items[j])), items[j].f, -2, a.distanceTo(pos[j]) * 0.15, 14);
+  for (const j of b.members) if (j !== b.start && pos[j] && pos[b.start]) s.curve(a, pos[j], w, new THREE.Color(colorOf(items[j])), items[j].f, -2, a.distanceTo(pos[j]) * 0.15, 14);
   baseLines = s.mesh(0.5); baseLines.renderOrder = 3;
   if (S.focus >= 0) setFocus(-1, false);
   stopWalk(); select(b.start, false);
   // Frame the whole base: from where it started to its latest piece.
-  const box = new THREE.Box3().setFromPoints(b.members.map((j) => pos[j])), mid = box.getCenter(new THREE.Vector3());
+  if (!pos[b.start]) return;   // a FabCafe base, while in the forest
+  const box = new THREE.Box3().setFromPoints(b.members.map((j) => pos[j]).filter(Boolean)), mid = box.getCenter(new THREE.Vector3());
   const r = Math.max(14, box.getSize(new THREE.Vector3()).length() * 0.75);
   const dir = camera.position.clone().sub(controls.target).setY(0); if (dir.lengthSq() < 1) dir.set(0, 0, 1);
   flyTo(mid, mid.clone().addScaledVector(dir.normalize(), r * 1.6 * fit()).add(new THREE.Vector3(0, r * 0.35, 0)), 1600);

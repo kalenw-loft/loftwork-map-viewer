@@ -5,6 +5,7 @@ import { S, $, yOf, Y0, TYPE_SIZE, FAB_WHITE, LANGS, langOf, colorOf,
 import { scene, pointMat, Segments, label } from './scene.js';
 import { buildPanel, pickGlow, setView, setYear, setPresent } from './ui.js';
 import { applyFilter } from './search.js';
+import { buildForest } from './forest.js';
 
 export function build(data) {
   S.D = data; S.items = data.items; S.N = S.items.length; S.FAB = data.groups.length - 1;
@@ -97,7 +98,7 @@ export function build(data) {
   const ring = S.ring = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.72, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthTest: false, side: THREE.DoubleSide }));
   ring.visible = false; ring.renderOrder = 6; scene.add(ring);
 
-  buildPanel(); pickGlow(); setView('all', 0); applyFilter();
+  buildForest(); buildPanel(); pickGlow(); setView('all', 0); applyFilter();
   const yr = $('year'); yr.min = Y0; yr.max = maxYear; yr.value = maxYear; setYear(maxYear);
   $('sub').textContent = `${N.toLocaleString()} pieces of work · ${Y0}–${maxYear - 1} · updated ${data.generated}`;
   if (location.hash === '#present') setPresent(true);

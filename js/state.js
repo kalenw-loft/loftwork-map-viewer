@@ -17,11 +17,12 @@ export const S = {
   ring: null, domainColors: null, langColors: null,
   baseOn: -1, selected: -1, focus: -1, yearNow: 2030,
   langView: false, jpOnly: true,
+  mode: 'map',     // 'map' = the 3D overview, 'forest' = the Loftwork forest (forest.js)
   tween: null,     // camera flight in progress
   playing: null,   // timeline playback in progress
 };
 export const typeOn = [1, 1, 1, 1];
-export const pos = [], neighbours = [], groupLabels = [], cityLabels = [], baseLabels = [], glowing = [], byPerson = [], byClient = [];
+export const pos = [], fpos = [], neighbours = [], groupLabels = [], cityLabels = [], baseLabels = [], glowing = [], byPerson = [], byClient = [];
 
 // Language classes for the language view. lg is a bit set: 1 Japanese, 2 English, 4 Traditional Chinese.
 export const LANGS = [
@@ -34,5 +35,10 @@ export const langOf = (it) => LANGS.findIndex((l) => l.test(it.lg ?? 1));
 export const colorOf = (it) => S.langView ? LANGS[langOf(it)].color : it.d === S.FAB && it.t !== 2 ? FAB_WHITE : S.D.groups[it.d].color;
 export const urlOf = (it) => it.u || `https://loftwork.com/${it.l}/${S.D.types[it.t]}/${it.s}`;
 export const shown = (i) => S.items[i].f <= S.yearNow && typeOn[S.items[i].t] && S.geo.attributes.aDim.array[i] > 0 && (S.focus < 0 || S.items[i].d === S.focus);
+// In the forest a tree stands for every Loftwork piece (FabCafe gets its own forest later). Focus only
+// flies to a grove there, it doesn't hide the others.
+export const inForest = (i) => !!fpos[i] && S.items[i].f <= S.yearNow && typeOn[S.items[i].t] && S.geo.attributes.aDim.array[i] > 0;
+export const shownHere = (i) => S.mode === 'forest' ? inForest(i) : shown(i);
+export const at = () => S.mode === 'forest' ? fpos : pos;   // positions in the current mode
 export const langCodes = (it) => ['JP', 'EN', 'TC'].filter((_, k) => (it.lg ?? 1) & (1 << k)).join('/');
 export const metaOf = (it) => [it.d === S.FAB ? `FabCafe ${S.D.cities[it.fc].en}` : S.D.groups[it.d].en, TYPE_ONE[it.t], it.y, langCodes(it), it.c].filter(Boolean).join(' · ');

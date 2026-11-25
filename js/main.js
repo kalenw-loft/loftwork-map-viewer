@@ -22,6 +22,7 @@ renderer.setAnimationLoop((now) => {
     if (k >= 1) S.tween = null;
   }
   controls.update();
+  if (S.mode === 'forest' && camera.position.y < 1.2) camera.position.y = 1.2;   // stay above the ground
   if (S.items && ++frame % 30 === 0) loadThumbsInView();   // about twice a second
   if (S.ring?.visible) S.ring.quaternion.copy(camera.quaternion);
   renderer.render(scene, camera);
@@ -35,4 +36,4 @@ fetch('data/items.json', { cache: 'no-cache' }).then((r) => { if (!r.ok) throw n
     $('err').textContent = `Could not load the map (${e.message}). Run "python3 scripts/build_viewer.py" and open this page through a local server, not as a file.`;
   });
 
-window.__map = { scene, camera, controls, U, select, setView, setFocus, get items() { return S.items; }, glowing };   // for the console
+window.__map = { S, scene, camera, controls, U, select, setView, setFocus, get items() { return S.items; }, glowing };   // for the console

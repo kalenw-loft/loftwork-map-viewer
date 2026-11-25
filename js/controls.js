@@ -1,18 +1,20 @@
 // Pointer, trackpad and mouse input: hover tips, picking, zoom toward the cursor.
 import * as THREE from 'three';
-import { S, $, el, yOf, Y0, TYPE_SIZE, shown, metaOf, pos } from './state.js';
+import { S, $, el, yOf, Y0, TYPE_SIZE, shownHere, at, metaOf } from './state.js';
+import { treeRadius } from './forest.js';
 import { camera, renderer, controls, U } from './scene.js';
 import { select, closeCard, stopWalk } from './ui.js';
 
 const v = new THREE.Vector3();
 function pick(x, y, minReach = 12) {
   let best = -1, bestD = Infinity;
-  const h = innerHeight, w = innerWidth, px = U.uScale.value / renderer.getPixelRatio();
+  const h = innerHeight, w = innerWidth, px = U.uScale.value / renderer.getPixelRatio(), pos = at(), forest = S.mode === 'forest';
   for (let i = 0; i < S.N; i++) {
-    if (!shown(i)) continue;
+    if (!shownHere(i)) continue;
     v.copy(pos[i]).project(camera); if (v.z > 1 || v.z < -1) continue;
     const dx = (v.x + 1) * w / 2 - x, dy = (1 - v.y) * h / 2 - y, d = dx * dx + dy * dy;
-    const reach = Math.max(minReach, 0.7 * TYPE_SIZE[S.items[i].t] * px / camera.position.distanceTo(pos[i]));   // forgiving on a trackpad
+    const size = forest ? 1.4 * treeRadius(i) : 0.7 * TYPE_SIZE[S.items[i].t];   // a tree's crown, or a dot
+    const reach = Math.max(minReach, size * px / camera.position.distanceTo(pos[i]));   // forgiving on a trackpad
     if (d < reach * reach && d < bestD) { best = i; bestD = d; }
   }
   return best;
@@ -60,6 +62,9 @@ dom.addEventListener('wheel', (e) => {
   }
   off.copy(camera.position).sub(controls.target); spherical.setFromVector3(off);
   spherical.theta -= dx * 0.0035; off.setFromSpherical(spherical);
+  if (S.mode === 'forest') {   // in the forest, sideways turns and up/down walks forward and back
+    camera.position.copy(controls.target).add(off); return walk(0, -dy * 0.6);
+  }
   const lift = THREE.MathUtils.clamp(controls.target.y - dy * dist * 0.0011, yOf(Y0) - 10, yOf(S.maxYear ?? 2027) + 20) - controls.target.y;
   controls.target.y += lift; camera.position.copy(controls.target).add(off);
 }, { passive: false });
@@ -84,7 +89,7 @@ function walk(dx, dy) {
   const dist = camera.position.distanceTo(controls.target);
   camera.getWorldDirection(fwd); fwd.y = 0; if (fwd.lengthSq() < 1e-6) return; fwd.normalize();
   side.crossVectors(fwd, camera.up).normalize();
-  const k = dist * 0.003;
+  const k = Math.max(dist, S.mode === 'forest' ? 40 : 0) * 0.003;   // in the forest the target is close, so keep a walking pace
   const move = fwd.multiplyScalar(-dy * k).addScaledVector(side, dx * k);
   controls.target.add(move); camera.position.add(move);
 }
